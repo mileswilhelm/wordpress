@@ -376,6 +376,83 @@ svg.fill-current {
     transition: visibility 0.36s ease-out, opacity 0.48s ease-out;
 }
 
+.sitemap-modal-overlay {
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    height: 0;
+    transition: opacity 0.24s ease-out, visibility 0.24s ease-out;
+}
+
+.show-popup .sitemap-modal-overlay {
+    opacity: 1;
+    visibility: visible;
+    height: initial;
+    transition: opacity 0.24s ease-out, visibility 0.24s ease-out;
+}
+
+.sitemap-modal-inventory,
+.sitemap-modal-models {
+    transform: translateY(0);
+    z-index: 101;
+    height: 75vh;
+    left: 81.1px;
+    right: 81.1px;
+    transition: transform 0.36s ease-out;
+}
+
+.show-popup.inventory-popup .sitemap-modal-inventory,
+.show-popup.models-popup .sitemap-modal-models {
+    transform: translateY(-75vh);
+}
+
+.sitemap-modal-models {
+    height: 80vh;
+}
+
+.show-popup.models-popup .sitemap-modal-models {
+    transform: translateY(-81vh);
+}
+
+.sitemap-modal-model {
+    opacity: 0;
+    visibility: hidden;
+    height: 0;
+    transition: visibility 0.01s ease-out, opacity 0.01s ease-out;
+}
+
+.sitemap-modal-model.active {
+    opacity: 1;
+    visibility: visible;
+    height: initial;
+    transition: visibility 0.36s ease-out, opacity 0.48s ease-out;
+}
+
+.model-content::-webkit-scrollbar {
+    display: block!important;
+    width: 0.5rem;
+}
+
+.model-content::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.2);
+    border-radius: 16px;
+}
+
+.shadow-xl {
+    box-shadow: 0 15px 38px rgba(0,0,0,0.30), 0 5px 12px rgba(0,0,0,0.22);
+}
+
+.border-t-16 {
+    border-top-width: 2rem;
+}
+
+.rounded-t-xl {
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+}
+
+
 .floor-plan-images > img {
     opacity: 0;
     visibility: hidden;

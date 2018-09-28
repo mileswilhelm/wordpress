@@ -1662,10 +1662,15 @@ $community_logo = get_field('community_logo');
 				sitemap_blocks_loading: true,
 				sitemap_blocks_empty: null,
 				sitemap_index: 0,
+				popup_displayed: false,
 				requested_inventory: null,
 				requested_inventory_error: false,
+				inventory_popup_displayed: false,
 				requested_models: null,
-				requested_models_error: false
+				requested_models_error: false,
+				models_popup_displayed: false,
+				requested_models_index: 0,
+				requested_models_length: 0
 			}
 		},
 		methods: {
@@ -1677,8 +1682,10 @@ $community_logo = get_field('community_logo');
 					axios
 						.get(`https://vericorstaging.eastonpreview.com/wp-json/wp/v2/pages/${id}`)
 						.then(response => {
-							this.requested_inventory = response.data.acf
+							this.requested_inventory = response.data
 							console.log(this.requested_inventory)
+							this.popup_displayed = true
+							this.inventory_popup_displayed = true
 						})
 						.catch(error => {
 							console.log(error)
@@ -1686,6 +1693,69 @@ $community_logo = get_field('community_logo');
 						})
 				} else {
 					return
+				}
+			},
+			requestModels: function (id) {
+				//parameter id: Array
+				console.log(id)
+				this.requested_models_length = id.length
+				let json_request
+				id.forEach((item, index) => {
+					console.log(item)
+					console.log(index)
+					if ( index == 0 ) {
+						json_request = `https://vericorstaging.eastonpreview.com/wp-json/wp/v2/pages?include[]=${item}`
+					} else {
+						json_request += `&include[]=${item}`
+					}
+				})
+
+				// console.log(json_request)
+				// return
+				if ( id ) {
+					axios
+						.get( json_request )
+						.then(response => {
+							this.requested_models = response.data
+							console.log(this.requested_models)
+							this.popup_displayed = true
+							this.models_popup_displayed = true
+						})
+						.catch(error => {
+							console.log(error)
+							this.requested_models_error = true
+						})
+				} else {
+					return
+				}
+			},
+			hidePopups: function() {
+				this.popup_displayed = false
+				this.inventory_popup_displayed = false
+				this.requested_inventory = null
+				this.models_popup_displayed = false
+				this.requested_models = null
+				this.requested_models_index = 0
+				this.requested_models_length = 0
+			},
+			increase_model_index: function() {
+				console.log('requested_models_length', this.requested_models_length)
+				this.requested_models_index++
+				console.log('requested_models_index', this.requested_models_index)
+				if ( this.requested_models_index >= this.requested_models_length) {
+					this.requested_models_index = 0
+					console.log('requested_models_index', this.requested_models_index)
+				}
+			},
+			decrease_model_index: function() {
+				console.log('requested_models_length', this.requested_models_length)
+				
+				if ( this.requested_models_index > 0 ) {
+					this.requested_models_index--
+					console.log('requested_models_index', this.requested_models_index)
+				} else {
+					this.requested_models_index = this.requested_models_length - 1
+					console.log('requested_models_index', this.requested_models_index)
 				}
 			}
 		},
@@ -1731,7 +1801,12 @@ $community_logo = get_field('community_logo');
 					<!-- put fake map -->
 					<img src="https://vericorstaging.eastonpreview.com/wp-content/uploads/2018/09/1622x988.jpg" class="relative sitemap-image active">
 				</div>
-				<div class="display-routed-page absolute pin-r pt-display overflow-scroll sitemaps" v-if="!sitemap_blocks_loading">
+				<div 
+					class="display-routed-page absolute pin-r pt-display overflow-hidden sitemaps" 
+					v-if="!sitemap_blocks_loading"
+					:class="{ 'show-popup': popup_displayed, 'inventory-popup': inventory_popup_displayed, 'models-popup': models_popup_displayed}"
+				>
+					<div class="absolute pin sitemap-modal-overlay" v-on:click="hidePopups"></div>
 					<!-- put top navigation -->
 					<div class="display-sub-navigation flex relative mr-display" v-if="this.sitemap_blocks">
 						<div 
@@ -1753,15 +1828,174 @@ $community_logo = get_field('community_logo');
 					<div class="sitemap-data-wrapper absolute pin"
 						v-for="(block, index) in sitemap_blocks"
 						:class="{ 'active': index === sitemap_index }"
+						v-if="block.sitemap_lot_data"
 					>
 						<div class="sitemap-data-item absolute h-10 w-10 shadow-md hover:shadow rounded-full text-white flex justify-center items-center"
 							v-for="(item, index) in block.sitemap_lot_data"
 							v-bind:style="{ top: item.top_position + '%', left: item.left_position + '%' }"
 							v-bind:class="['bg-'+item.status]"
-							v-if="block.sitemap_lot_data"
+							v-if="!item.linked_inventory && !item.available_models"
+						>
+							{{item.lot_label}}
+						</div>
+						<div class="sitemap-data-item absolute h-10 w-10 shadow-md hover:shadow rounded-full text-white flex justify-center items-center inv"
+							v-for="(item, index) in block.sitemap_lot_data"
+							v-bind:style="{ top: item.top_position + '%', left: item.left_position + '%' }"
+							v-bind:class="['bg-'+item.status]"
+							v-if="item.linked_inventory"
 							v-on:click="requestInventory(item.linked_inventory)"
 						>
 							{{item.lot_label}}
+						</div>
+						<div class="sitemap-data-item absolute h-10 w-10 shadow-md hover:shadow rounded-full text-white flex justify-center items-center mod"
+							v-for="(item, index) in block.sitemap_lot_data"
+							v-bind:style="{ top: item.top_position + '%', left: item.left_position + '%' }"
+							v-bind:class="['bg-'+item.status]"
+							v-if="item.available_models"
+							v-on:click="requestModels(item.available_models)"
+
+						>
+							{{item.lot_label}}
+						</div>
+					</div>
+					<div 
+						class="absolute bg-white border-t-16 border-yellow mx-auto rounded-t-xl shadow-xl sitemap-modal-inventory pt-8 px-8"
+					>
+						<h1 class="font-serif text-5xl text-blue text-center" v-if="requested_inventory">{{requested_inventory.acf.street_address}}</h1>
+						<h3 class="text-3xl font-thin text-gray text-center" v-if="requested_inventory">{{requested_inventory.acf.city}}, {{requested_inventory.acf.state}}</h3>
+						<div class="flex flex-row flex-wrap mt-8" v-if="requested_inventory">
+							<div class="w-2/5 pr-4">
+								<img v-bind:src="requested_inventory.acf.inventory_photo_gallery[0].url" class="shadow-md" />
+							</div>
+							<div class="w-3/5 pl-8">
+								<div class="flex flex-wrap flex-row">
+									<div v-html="requested_inventory.content.rendered" class="wp-content leading-normal text-lg"></div>
+								</div>
+							</div>
+							<div class="w-full flex bg-blue-lightest items-center justify-between py-2 px-8 shadow-inner mt-8">
+								<div class="flex flex-basis-45 justify-between items-center">
+									<div class="flex flex-col items-center justify-center">
+										<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{requested_inventory.acf.bedrooms}}</p>
+										<p class="text-gray text-xl">Beds</p>
+									</div>
+									<div class="flex flex-col items-center justify-center">
+										<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{requested_inventory.acf.bathrooms}}</p>
+										<p class="text-gray text-xl">Baths</p>
+									</div>
+									<div class="flex flex-col items-center justify-center">
+										<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{requested_inventory.acf.garage}}</p>
+										<p class="text-gray text-xl">Garage</p>
+									</div>
+									<div class="flex flex-col items-center justify-center">
+										<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{requested_inventory.acf.stories}}</p>
+										<p class="text-gray text-xl">Stories</p>
+									</div>
+									<div class="flex flex-col items-center justify-center">
+										<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{requested_inventory.acf.square_feet}}</p>
+										<p class="text-gray text-xl">Sq. Ft.</p>
+									</div>
+								</div>
+								
+								<div class="flex flex-col items-center justify-center flex-basis-45">
+									<p class="font-bold text-3xl text-5xl text-blue">Price: \${{requested_inventory.acf.price}}</p>
+								</div>
+							</div>
+							<div class="text-center mt-8 w-full">
+								<router-link :to="'/homes/'+requested_inventory.id" class="bg-blue btn flex font-bold h-12 hover:bg-blue-dark hover:text-yellow items-center justify-center rounded shadow-md hover:shadow-lg text-white text-xl w-1/3 mx-auto">View This Home</router-link>
+							</div>
+						</div>
+					</div>
+					<div 
+						class="absolute bg-white border-t-16 border-yellow mx-auto rounded-t-xl shadow-xl sitemap-modal-models pt-8 px-8"
+					>
+						<h1 class="text-5xl text-center mb-6" v-if="requested_models">Build One Of These Models On This Homesite</h1>
+						
+						<div>
+							<!-- repeat requested models -->
+							<div
+								v-for="(model, index) in requested_models"
+								v-if="requested_models"
+								class="sitemap-modal-model"
+								:class="{ 'active': index === requested_models_index }"
+							>
+								<h1 class="font-serif text-5xl text-blue text-center mb-4" v-if="requested_models">{{model.title.rendered}}</h1>
+								<div class="flex flex-row flex-wrap" v-if="requested_models">
+									<div class="w-2/5 pr-4">
+										<img v-bind:src="model.acf.model_photo_gallery[0].url" class="shadow-md" />
+									</div>
+									<div class="w-3/5 pl-8">
+										<div class="flex flex-wrap flex-row model-content p-4 shadow-inner overflow-y-scroll" style="height: 305px;">
+											<div v-html="model.content.rendered" class="wp-content leading-normal text-lg text-black"></div>
+										</div>
+									</div>
+									<div class="w-full flex bg-blue-lightest items-center justify-between py-2 px-8 shadow-inner mt-8">
+										<div class="flex flex-basis-45 justify-between items-center">
+											<div class="flex flex-col items-center justify-center">
+												<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{model.acf.bedrooms}}</p>
+												<p class="text-gray text-xl">Beds</p>
+											</div>
+											<div class="flex flex-col items-center justify-center">
+												<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{model.acf.bathrooms}}</p>
+												<p class="text-gray text-xl">Baths</p>
+											</div>
+											<div class="flex flex-col items-center justify-center">
+												<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{model.acf.garage}}</p>
+												<p class="text-gray text-xl">Garage</p>
+											</div>
+											<div class="flex flex-col items-center justify-center">
+												<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{model.acf.stories}}</p>
+												<p class="text-gray text-xl">Stories</p>
+											</div>
+											<div class="flex flex-col items-center justify-center">
+												<p class="font-bold mb-1 text-3xl text-4xl text-blue">{{model.acf.square_feet}}</p>
+												<p class="text-gray text-xl">Sq. Ft.</p>
+											</div>
+										</div>
+										
+										<div class="flex flex-col items-center justify-center flex-basis-45">
+											<p class="font-bold text-5xl text-blue" v-if="model.acf.price">Base Price: \${{model.acf.price}}</p>
+											<p class="font-bold text-4xl text-blue text-center" v-if="!model.acf.price">Base Price: {{model.acf.starting_from_price}}</p>
+										</div>
+									</div>
+									<div class="text-center mt-8 w-full">
+										<router-link :to="'/models/'+model.id" class="bg-blue btn flex font-bold h-12 hover:bg-blue-dark hover:text-yellow items-center justify-center rounded shadow-md hover:shadow-lg text-white text-xl w-1/3 mx-auto">View This Model</router-link>
+									</div>
+								</div>
+							</div>
+							<!-- end repeat requested_models -->
+						</div>
+
+						<div class="absolute bg-blue border-blue-lighter border-t-4 flex flex-row h-24 pin-b pin-x text-white" v-if="requested_models">
+							<div class="flex px-8 items-center justify-between w-5/6">
+								<p class="font-bold text-4xl mb-2">{{requested_models[requested_models_index].title.rendered}}</p>
+								<p class="text-3xl mb-2">{{requested_models_index + 1}} / {{requested_models_length}}</p>
+							</div>
+							<div class="flex justify-end w-1/6">
+								<div
+									class="border-blue-lighter border-l-2 flex items-center justify-center w-24"
+									v-on:click="decrease_model_index"
+								>
+									<svg viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="fill-current w-1/2 mb-2">
+										<g id="Page-1" stroke="none" stroke-width="1" fill-rule="evenodd">
+											<g id="icon-shape">
+												<polygon id="Combined-Shape" points="7.05025253 9.29289322 6.34314575 10 12 15.6568542 13.4142136 14.2426407 9.17157288 10 13.4142136 5.75735931 12 4.34314575"></polygon>
+											</g>
+										</g>
+									</svg>
+								</div>
+								<div 
+									class="border-blue-lighter border-l-2 flex items-center justify-center w-24 border-r-2"
+									v-on:click="increase_model_index"
+								>
+									<svg viewBox="0 0 20 20" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="fill-current w-1/2 mb-2">
+										<g id="Page-1" stroke="none" stroke-width="1" fill-rule="evenodd">
+											<g id="icon-shape">
+												<polygon id="Combined-Shape" points="12.9497475 10.7071068 13.6568542 10 8 4.34314575 6.58578644 5.75735931 10.8284271 10 6.58578644 14.2426407 8 15.6568542 12.9497475 10.7071068"></polygon>
+											</g>
+										</g>
+									</svg>
+								</div>
+							</div>
 						</div>
 					</div>
 				</div>
